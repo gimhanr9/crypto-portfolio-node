@@ -1,8 +1,9 @@
+require('dotenv').config();
 const axios = require('axios');
+const { readDataFromCSV } = require('../utils/csvParser');
+console.log(process.env);
 
-const getLatestPortfolioValues = () => {
-  console.log('Latest values');
-};
+const getLatestPortfolioValues = () => {};
 
 const getLatestPortfolioValueOfToken = (token) => {
   console.log('Latest value of token');
