@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 
+require('dotenv').config();
 const { program } = require('commander');
 const pkgJson = require('../package.json');
 const portfolioController = require('../controllers/portfolioController');
+const portfolioService = require('../services/portfolioService');
+console.log(process.env);
 
 program
   .command('latest')

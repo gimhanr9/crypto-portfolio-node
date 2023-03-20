@@ -8,7 +8,7 @@ const readDataFromCSV = async () => {
       columns: true,
     });
 
-    fs.createReadStream('./../data/transactions.csv')
+    fs.createReadStream('../data/transactions.csv')
       .pipe(parser)
       .on('data', (data) => {
         rows.push(data);
