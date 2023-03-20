@@ -1,7 +1,13 @@
 const axios = require('axios');
-const { readDataFromCSV } = require('../utils/csvParser');
-const { getCryptoPriceInUSD } = require('../utils/getCryptoPrice');
-const { getTokenBalance } = require('../utils/getTokenBalance');
+
+const {
+  readDataFromCSV,
+  getCryptoPriceInUSD,
+  getTransactionsUptoDate,
+  getCryptoPriceInUSDOnDate,
+  getTokenBalance,
+  getTokenBalanceOnDate,
+} = require('../utils/helperFunctions');
 
 let transactions = [];
 
@@ -53,12 +59,58 @@ const getLatestPortfolioValueOfToken = async (token) => {
   }
 };
 
-const getPortfolioValuesOnDate = (date) => {
-  console.log('Portfolio value per token');
+const getPortfolioValuesOnDate = async (enteredDate) => {
+  try {
+    let date = new Date(enteredDate);
+    let unixTimeStamp = Math.floor(date.getTime() / 1000);
+
+    const transactionsUptoDate = getTransactionsUptoDate(transactions, date);
+    const tokens = [
+      ...new Set(transactionsUptoDate.map((transaction) => transaction.token)),
+    ];
+
+    let portfolioValue = 0;
+
+    const portfolio = tokens.map(async (token) => {
+      let tokenPrice = await getCryptoPriceInUSDOnDate(token, unixTimeStamp);
+      let tokenPriceOnDate = tokenPrice[token].USD;
+      let tokenBalanceUptoDate = getTokenBalanceOnDate(
+        transactions,
+        token,
+        date
+      );
+      let tokenValue = tokenBalanceUptoDate * tokenPriceOnDate;
+      portfolioValue += tokenValue;
+      return {
+        token,
+        value: tokenValue,
+        price: tokenPrice,
+      };
+    });
+
+    return {
+      portfolio,
+      portfolioValue,
+    };
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
 };
 
-const getPortfolioValueOfTokenOnDate = (date, token) => {
-  console.log('Value of token on date');
+const getPortfolioValueOfTokenOnDate = async (enteredDate, token) => {
+  try {
+    let date = new Date(enteredDate);
+    const unixTimeStamp = Math.floor(date.getTime() / 1000);
+    let tokenPrice = await getCryptoPriceInUSDOnDate(token, unixTimeStamp);
+    let tokenPriceOnDate = tokenPrice[token].USD;
+    let tokenBalanceUptoDate = getTokenBalanceOnDate(transactions, token, date);
+    let tokenValueOnDate = tokenBalanceUptoDate * tokenPriceOnDate;
+    return tokenValueOnDate;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
 };
 
 module.exports = {
