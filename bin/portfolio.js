@@ -7,7 +7,6 @@ const figlet = require('figlet');
 const pkgJson = require('../package.json');
 const portfolioController = require('../controllers/portfolioController');
 const portfolioService = require('../services/portfolioService');
-console.log(process.env);
 
 const main = async () => {
   await portfolioService.init();
