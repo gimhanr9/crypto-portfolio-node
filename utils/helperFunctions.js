@@ -33,8 +33,7 @@ const getCryptoPriceInUSD = async (tokens) => {
     const latestPrices = response.data;
     return latestPrices;
   } catch (error) {
-    console.error(error);
-    return null;
+    throw new Error(error);
   }
 };
 
@@ -46,8 +45,7 @@ const getCryptoPriceInUSDOnDate = async (token, timeStamp) => {
     const priceOnDate = response.data;
     return priceOnDate;
   } catch (error) {
-    console.error(error);
-    return null;
+    throw new Error(error);
   }
 };
 
@@ -98,29 +96,33 @@ function compareDates(timestampCSV, timestampUser) {
   //     timestampUserDate.getFullYear();
 }
 
-const getTransactionsUptoDate = (transactions, token, timestamp) => {
-  const transactionsUptoDate = transactions.filter(
-    (transaction) =>
-      transaction.token === token &&
-      compareDates(transaction.timestamp, timestamp)
+const getTransactionsUptoDate = (transactions, timestamp) => {
+  const transactionsUptoDate = transactions.filter((transaction) =>
+    compareDates(transaction.timestamp, timestamp)
   );
 
   return transactionsUptoDate;
 };
 
 const getTokenBalanceOnDate = (transactions, token, timestamp) => {
-  const transactionsUptoDate = getTransactionsUptoDate(
-    transactions,
-    token,
-    timestamp
-  );
+  //const transactionsUptoDate = getTransactionsUptoDate(transactions, timestamp);
 
-  const depositValueUptoDate = transactionsUptoDate
-    .filter((transaction) => transaction.transaction_type === 'DEPOSIT')
+  const depositValueUptoDate = transactions
+    .filter(
+      (transaction) =>
+        compareDates(transaction.timestamp, timestamp) &&
+        transaction.token === token &&
+        transaction.transaction_type === 'DEPOSIT'
+    )
     .reduce((total, transaction) => total + parseFloat(transaction.amount), 0);
 
-  const withdrawalValueUptoDate = transactionsUptoDate
-    .filter((transaction) => transaction.transaction_type === 'WITHDRAWAL')
+  const withdrawalValueUptoDate = transactions
+    .filter(
+      (transaction) =>
+        compareDates(transaction.timestamp, timestamp) &&
+        transaction.token === token &&
+        transaction.transaction_type === 'WITHDRAWAL'
+    )
     .reduce((total, transaction) => total + parseFloat(transaction.amount), 0);
 
   const tokenBalanceUptoDate = depositValueUptoDate - withdrawalValueUptoDate;
@@ -129,17 +131,7 @@ const getTokenBalanceOnDate = (transactions, token, timestamp) => {
 };
 
 const getUnixTimeStamp = (date) => {
-  // using regex to validate date format
-  const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
-  const match = date.match(dateRegex);
-  if (!match) {
-    throw new Error('Invalid date format. Date should be in d/m/yyyy format.');
-  }
-  const [_, day, month, year] = match;
-  const dateObject = new Date(year, month - 1, day);
-  if (dateObject.toString() === 'Invalid Date') {
-    throw new Error('Invalid date value.');
-  }
+  const dateObject = new Date(date);
   return Math.floor(dateObject.getTime() / 1000);
 };
 

@@ -41,8 +41,7 @@ const getLatestPortfolioValues = async () => {
       portfolioValue,
     };
   } catch (error) {
-    console.error(error);
-    return null;
+    throw new Error(error);
   }
 };
 
@@ -55,8 +54,7 @@ const getLatestPortfolioValueOfToken = async (token) => {
     let portfolioValue = tokenBalance * tokenPrice;
     return portfolioValue;
   } catch (error) {
-    console.error(error);
-    return null;
+    throw new Error(error);
   }
 };
 
@@ -102,11 +100,10 @@ const getPortfolioValuesOnDate = async (enteredDate) => {
         portfolioValue,
       };
     } else {
-      return null;
+      throw new Error('No records for given token');
     }
   } catch (error) {
-    console.error(error);
-    return null;
+    throw new Error(error);
   }
 };
 
@@ -120,8 +117,7 @@ const getPortfolioValueOfTokenOnDate = async (enteredDate, token) => {
     let tokenValueOnDate = tokenBalanceUptoDate * tokenPriceOnDate;
     return tokenValueOnDate;
   } catch (error) {
-    console.error(error);
-    return null;
+    throw new Error(error);
   }
 };
 

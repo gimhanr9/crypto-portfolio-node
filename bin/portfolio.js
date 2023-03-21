@@ -21,8 +21,27 @@ const main = async () => {
   program
     .command('latest')
     .description('Get the latest portfolio value per token in USD')
-    .action(() => {
-      portfolioController.getLatestPortfolioValues();
+    .action(async () => {
+      try {
+        const result = await portfolioController.getLatestPortfolioValues();
+        console.log(
+          chalk.green(
+            'Latest portfolio value: $' + result.portfolioValue.toFixed(2)
+          )
+        );
+        console.log(chalk.green('Portfolio Breakdown:'));
+        result.portfolio.forEach((token) => {
+          console.log(
+            chalk.yellow(token.token + ': ') +
+              chalk.green('$' + token.value.toFixed(2)) +
+              ' (' +
+              chalk.green('$' + token.price.toFixed(2)) +
+              ' per token)'
+          );
+        });
+      } catch (error) {
+        console.error(chalk.red('Error:', error.message));
+      }
     });
 
   // program.action(() => {
@@ -32,15 +51,60 @@ const main = async () => {
   program
     .command('token <token>')
     .description('Get the latest portfolio value for a given token in USD')
-    .action((token) => {
-      portfolioController.getLatestPortfolioValueByToken(token);
+    .action(async (token) => {
+      try {
+        const result = await portfolioController.getLatestPortfolioValueByToken(
+          token
+        );
+        console.log(
+          chalk.green(
+            `Latest portfolio value for ${token}: $` + result.toFixed(2)
+          )
+        );
+      } catch (error) {
+        console.error(chalk.red('Error:', error.message));
+      }
     });
 
   program
     .command('date <date>')
     .description('Get the portfolio value per token in USD on a given date')
-    .action((date) => {
-      portfolioController.getPortfolioValuesOnDate(date);
+    .validate((date) => {
+      // input validation - date format
+      const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+      const match = date.match(dateRegex);
+      if (!match) {
+        console.error(chalk.red('Invalid date format'));
+        return false;
+      }
+      const dateObject = new Date(date);
+      if (dateObject.toString() === 'Invalid Date') {
+        console.error(chalk.red('Invalid date value'));
+        return false;
+      }
+      return true;
+    })
+    .action(async (date) => {
+      try {
+        const result = await portfolioController.getPortfolioValuesOnDate(date);
+        console.log(
+          chalk.green(
+            `Portfolio value on ${date}: $` + result.portfolioValue.toFixed(2)
+          )
+        );
+        console.log(chalk.green('Portfolio Breakdown:'));
+        result.portfolio.forEach((token) => {
+          console.log(
+            chalk.yellow(token.token + ': ') +
+              chalk.green('$' + token.value.toFixed(2)) +
+              ' (' +
+              chalk.green('$' + token.price.toFixed(2)) +
+              ' per token)'
+          );
+        });
+      } catch (error) {
+        console.error(chalk.red('Error:', error.message));
+      }
     });
 
   program
@@ -48,14 +112,41 @@ const main = async () => {
     .description(
       'Get the portfolio value of a given token in USD on the given date'
     )
-    .action((date, token) => {
-      portfolioController.getPortfolioValuesofTokenOnDate(date, token);
+    .validate((date) => {
+      // input validation - date format
+      const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+      const match = date.match(dateRegex);
+      if (!match) {
+        console.error(chalk.red('Invalid date format'));
+        return false;
+      }
+      const dateObject = new Date(date);
+      if (dateObject.toString() === 'Invalid Date') {
+        console.error(chalk.red('Invalid date value'));
+        return false;
+      }
+      return true;
+    })
+    .action(async (date, token) => {
+      try {
+        const result =
+          await portfolioController.getPortfolioValuesOfTokenOnDate();
+        console.log(
+          chalk.green(
+            `Portfolio value of ${token} on ${date}: $` + result.toFixed(2)
+          )
+        );
+      } catch (error) {
+        console.error(chalk.red('Error:', error.message));
+      }
     });
 
   program.on('command:*', () => {
     console.error(
-      'Invalid command: %s\nSee --help for a list of available commands.',
-      program.args.join(' ')
+      chalk.red(
+        'Invalid command: %s\nSee --help for a list of available commands.',
+        program.args.join(' ')
+      )
     );
     process.exit(1);
   });
