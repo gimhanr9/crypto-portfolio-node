@@ -72,17 +72,48 @@ const getTokenBalance = (transactions, token) => {
   return tokenBalance;
 };
 
-const getTransactionsUptoDate = (transactions, date) => {
+function compareDates(timestampCSV, timestampUser) {
+  // Create a date object from unix timestamp by converting it to milliseconds (*1000)
+  const dateCSV = new Date(timestampCSV * 1000);
+  const dateUser = new Date(timestampUser * 1000);
+
+  // Set time component to start of day (00:00:00) to ignore the time when comparing
+  dateCSV.setHours(0, 0, 0, 0);
+  dateUser.setHours(0, 0, 0, 0);
+
+  return dateCSV <= dateUser;
+
+  //   const csvDate =
+  //     timestampCSVDate.getDate() +
+  //     '/' +
+  //     (timestampCSVDate.getMonth() + 1) +
+  //     '/' +
+  //     timestampCSVDate.getFullYear();
+
+  //   const userDate =
+  //     timestampUserDate.getDate() +
+  //     '/' +
+  //     (timestampUserDate.getMonth() + 1) +
+  //     '/' +
+  //     timestampUserDate.getFullYear();
+}
+
+const getTransactionsUptoDate = (transactions, token, timestamp) => {
   const transactionsUptoDate = transactions.filter(
     (transaction) =>
-      transaction.token === token && new Date(transaction.date * 1000) <= date
+      transaction.token === token &&
+      compareDates(transaction.timestamp, timestamp)
   );
 
   return transactionsUptoDate;
 };
 
-const getTokenBalanceOnDate = (transactions, token, date) => {
-  const transactionsUptoDate = getTransactionsUptoDate(transactions, token);
+const getTokenBalanceOnDate = (transactions, token, timestamp) => {
+  const transactionsUptoDate = getTransactionsUptoDate(
+    transactions,
+    token,
+    timestamp
+  );
 
   const depositValueUptoDate = transactionsUptoDate
     .filter((transaction) => transaction.transaction_type === 'DEPOSIT')
@@ -97,6 +128,21 @@ const getTokenBalanceOnDate = (transactions, token, date) => {
   return tokenBalanceUptoDate;
 };
 
+const getUnixTimeStamp = (date) => {
+  // using regex to validate date format
+  const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+  const match = date.match(dateRegex);
+  if (!match) {
+    throw new Error('Invalid date format. Date should be in d/m/yyyy format.');
+  }
+  const [_, day, month, year] = match;
+  const dateObject = new Date(year, month - 1, day);
+  if (dateObject.toString() === 'Invalid Date') {
+    throw new Error('Invalid date value.');
+  }
+  return Math.floor(dateObject.getTime() / 1000);
+};
+
 module.exports = {
   readDataFromCSV,
   getCryptoPriceInUSD,
@@ -104,4 +150,5 @@ module.exports = {
   getCryptoPriceInUSDOnDate,
   getTokenBalance,
   getTokenBalanceOnDate,
+  getUnixTimeStamp,
 };

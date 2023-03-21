@@ -7,6 +7,7 @@ const {
   getCryptoPriceInUSDOnDate,
   getTokenBalance,
   getTokenBalanceOnDate,
+  getUnixTimeStamp,
 } = require('../utils/helperFunctions');
 
 let transactions = [];
@@ -61,37 +62,48 @@ const getLatestPortfolioValueOfToken = async (token) => {
 
 const getPortfolioValuesOnDate = async (enteredDate) => {
   try {
-    let date = new Date(enteredDate);
-    let unixTimeStamp = Math.floor(date.getTime() / 1000);
+    let unixTimeStamp = getUnixTimeStamp(enteredDate);
 
-    const transactionsUptoDate = getTransactionsUptoDate(transactions, date);
+    const transactionsUptoDate = getTransactionsUptoDate(
+      transactions,
+      unixTimeStamp
+    );
     const tokens = [
       ...new Set(transactionsUptoDate.map((transaction) => transaction.token)),
     ];
 
-    let portfolioValue = 0;
+    if (tokens.length > 0) {
+      let portfolioValue = 0;
 
-    const portfolio = tokens.map(async (token) => {
-      let tokenPrice = await getCryptoPriceInUSDOnDate(token, unixTimeStamp);
-      let tokenPriceOnDate = tokenPrice[token].USD;
-      let tokenBalanceUptoDate = getTokenBalanceOnDate(
-        transactions,
-        token,
-        date
+      const portfolio = await Promise.all(
+        tokens.map(async (token) => {
+          let tokenPrice = await getCryptoPriceInUSDOnDate(
+            token,
+            unixTimeStamp
+          );
+          let tokenPriceOnDate = tokenPrice[token].USD;
+          let tokenBalanceUptoDate = getTokenBalanceOnDate(
+            transactions,
+            token,
+            unixTimeStamp
+          );
+          let tokenValue = tokenBalanceUptoDate * tokenPriceOnDate;
+          portfolioValue += tokenValue;
+          return {
+            token,
+            value: tokenValue,
+            price: tokenPrice,
+          };
+        })
       );
-      let tokenValue = tokenBalanceUptoDate * tokenPriceOnDate;
-      portfolioValue += tokenValue;
-      return {
-        token,
-        value: tokenValue,
-        price: tokenPrice,
-      };
-    });
 
-    return {
-      portfolio,
-      portfolioValue,
-    };
+      return {
+        portfolio,
+        portfolioValue,
+      };
+    } else {
+      return null;
+    }
   } catch (error) {
     console.error(error);
     return null;
@@ -101,7 +113,7 @@ const getPortfolioValuesOnDate = async (enteredDate) => {
 const getPortfolioValueOfTokenOnDate = async (enteredDate, token) => {
   try {
     let date = new Date(enteredDate);
-    const unixTimeStamp = Math.floor(date.getTime() / 1000);
+    const unixTimeStamp = getUnixTimeStamp(date);
     let tokenPrice = await getCryptoPriceInUSDOnDate(token, unixTimeStamp);
     let tokenPriceOnDate = tokenPrice[token].USD;
     let tokenBalanceUptoDate = getTokenBalanceOnDate(transactions, token, date);
