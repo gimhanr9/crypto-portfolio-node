@@ -1,27 +1,30 @@
 const fs = require('fs');
+const { Readable } = require('stream');
 const { parse } = require('csv-parse');
 const axios = require('axios');
 
-const readDataFromCSV = async () => {
-  return new Promise((resolve, reject) => {
-    const rows = [];
-    const parser = parse({
-      columns: true,
+const getCSVStream = () => {
+  const csvStream = fs
+    .createReadStream('data/transactions.csv')
+    .pipe(parse({ columns: true }));
+
+  const readableStream = new Readable({
+    objectMode: true,
+    read() {},
+  });
+
+  csvStream
+    .on('data', (data) => {
+      readableStream.push(data);
+    })
+    .on('end', () => {
+      readableStream.push(null);
+    })
+    .on('error', (error) => {
+      readableStream.destroy(error);
     });
 
-    fs.createReadStream('data/transactions.csv')
-      .pipe(parser)
-      .on('data', (data) => {
-        rows.push(data);
-      })
-      .on('error', (err) => {
-        reject(err);
-      })
-      .on('end', () => {
-        console.log('CSV file successfully processed');
-        resolve(rows);
-      });
-  });
+  return readableStream;
 };
 
 const getCryptoPriceInUSD = async (tokens) => {
@@ -49,27 +52,6 @@ const getCryptoPriceInUSDOnDate = async (token, timeStamp) => {
   }
 };
 
-const getTokenBalance = (transactions, token) => {
-  const depositValue = transactions
-    .filter(
-      (transaction) =>
-        transaction.transaction_type === 'DEPOSIT' &&
-        transaction.token === token
-    )
-    .reduce((total, transaction) => total + parseFloat(transaction.amount), 0);
-
-  const withdrawalValue = transactions
-    .filter(
-      (transaction) =>
-        transaction.transaction_type === 'WITHDRAWAL' &&
-        transaction.token === token
-    )
-    .reduce((total, transaction) => total + parseFloat(transaction.amount), 0);
-
-  const tokenBalance = depositValue - withdrawalValue;
-  return tokenBalance;
-};
-
 function compareDates(timestampCSV, timestampUser) {
   // Create a date object from unix timestamp by converting it to milliseconds (*1000)
   const dateCSV = new Date(timestampCSV * 1000);
@@ -80,67 +62,26 @@ function compareDates(timestampCSV, timestampUser) {
   dateUser.setHours(0, 0, 0, 0);
 
   return dateCSV <= dateUser;
-
-  //   const csvDate =
-  //     timestampCSVDate.getDate() +
-  //     '/' +
-  //     (timestampCSVDate.getMonth() + 1) +
-  //     '/' +
-  //     timestampCSVDate.getFullYear();
-
-  //   const userDate =
-  //     timestampUserDate.getDate() +
-  //     '/' +
-  //     (timestampUserDate.getMonth() + 1) +
-  //     '/' +
-  //     timestampUserDate.getFullYear();
 }
 
-const getTransactionsUptoDate = (transactions, timestamp) => {
-  const transactionsUptoDate = transactions.filter((transaction) =>
-    compareDates(transaction.timestamp, timestamp)
-  );
-
-  return transactionsUptoDate;
-};
-
-const getTokenBalanceOnDate = (transactions, token, timestamp) => {
-  //const transactionsUptoDate = getTransactionsUptoDate(transactions, timestamp);
-
-  const depositValueUptoDate = transactions
-    .filter(
-      (transaction) =>
-        compareDates(transaction.timestamp, timestamp) &&
-        transaction.token === token &&
-        transaction.transaction_type === 'DEPOSIT'
-    )
-    .reduce((total, transaction) => total + parseFloat(transaction.amount), 0);
-
-  const withdrawalValueUptoDate = transactions
-    .filter(
-      (transaction) =>
-        compareDates(transaction.timestamp, timestamp) &&
-        transaction.token === token &&
-        transaction.transaction_type === 'WITHDRAWAL'
-    )
-    .reduce((total, transaction) => total + parseFloat(transaction.amount), 0);
-
-  const tokenBalanceUptoDate = depositValueUptoDate - withdrawalValueUptoDate;
-
-  return tokenBalanceUptoDate;
-};
-
 const getUnixTimeStamp = (date) => {
+  const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+  const match = date.match(dateRegex);
+  if (!match) {
+    throw new Error('Invalid date format');
+  }
   const dateObject = new Date(date);
+  if (dateObject.toString() === 'Invalid Date') {
+    throw new Error('Invalid date value');
+  }
+
   return Math.floor(dateObject.getTime() / 1000);
 };
 
 module.exports = {
-  readDataFromCSV,
+  getCSVStream,
   getCryptoPriceInUSD,
-  getTransactionsUptoDate,
   getCryptoPriceInUSDOnDate,
-  getTokenBalance,
-  getTokenBalanceOnDate,
+  compareDates,
   getUnixTimeStamp,
 };

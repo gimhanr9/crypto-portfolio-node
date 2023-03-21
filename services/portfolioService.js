@@ -1,103 +1,140 @@
 const axios = require('axios');
 
 const {
-  readDataFromCSV,
+  getCSVStream,
   getCryptoPriceInUSD,
-  getTransactionsUptoDate,
   getCryptoPriceInUSDOnDate,
-  getTokenBalance,
-  getTokenBalanceOnDate,
+  compareDates,
   getUnixTimeStamp,
 } = require('../utils/helperFunctions');
 
-let transactions = [];
-
-const init = async () => {
-  transactions = await readDataFromCSV();
-};
-
 const getLatestPortfolioValues = async () => {
-  const tokens = [
-    ...new Set(transactions.map((transaction) => transaction.token)),
-  ];
-
+  const csvStream = getCSVStream();
+  const portfolioData = {};
+  let csvTokens = [];
+  let portfolioValueUSD = 0;
   try {
-    const latestPrices = await getCryptoPriceInUSD(tokens);
-    let portfolioValue = 0;
-    const portfolio = tokens.map((token) => {
-      let tokenPrice = latestPrices[token].USD;
-      let tokenBalance = getTokenBalance(transactions, token);
-      let tokenValue = tokenBalance * tokenPrice;
-      portfolioValue += tokenValue;
+    for await (const transaction of csvStream) {
+      const { transaction_type, token, amount } = transaction;
+      const tokenAmount = parseFloat(amount);
+
+      if (!portfolioData[token]) {
+        portfolioData[token] = {
+          amount: 0,
+        };
+        csvTokens.push(token);
+      }
+
+      if (transaction_type === 'DEPOSIT') {
+        portfolioData[token].amount += tokenAmount;
+      } else if (transaction_type === 'WITHDRAWAL') {
+        portfolioData[token].amount -= tokenAmount;
+      }
+    }
+
+    const latestPrices = await getCryptoPriceInUSD(csvTokens);
+    const portfolio = csvTokens.map((token) => {
+      let tokenPriceUSD = latestPrices[token].USD;
+      let tokenPortfolioValueUSD = portfolioData[token].amount * tokenPriceUSD;
+      portfolioValueUSD += tokenPortfolioValueUSD;
       return {
         token,
-        value: tokenValue,
-        price: tokenPrice,
+        value: tokenPortfolioValueUSD,
+        price: tokenPriceUSD,
       };
     });
 
     return {
       portfolio,
-      portfolioValue,
+      portfolioValueUSD,
     };
   } catch (error) {
     throw new Error(error);
   }
 };
 
-const getLatestPortfolioValueOfToken = async (token) => {
-  let tokenArray = [token];
+const getLatestPortfolioValueOfToken = async (enteredToken) => {
+  let tokenArray = [enteredToken];
+  const csvStream = getCSVStream();
+  let tokenTotal = 0;
+
   try {
-    const latestPrices = await getCryptoPriceInUSD(tokenArray);
-    let tokenPrice = latestPrices[token].USD;
-    let tokenBalance = getTokenBalance(transactions, token);
-    let portfolioValue = tokenBalance * tokenPrice;
-    return portfolioValue;
+    for await (const transaction of csvStream) {
+      const { transaction_type, token, amount } = transaction;
+      const tokenAmount = parseFloat(amount);
+
+      if (enteredToken === token) {
+        if (transaction_type === 'DEPOSIT') {
+          tokenTotal += tokenAmount;
+        } else if (transaction_type === 'WITHDRAWAL') {
+          tokenTotal -= tokenAmount;
+        }
+      }
+    }
+
+    if (tokenTotal === 0) {
+      throw new Error('Token balance upto date is 0');
+    } else {
+      const latestPrices = await getCryptoPriceInUSD(tokenArray);
+      let tokenPriceUSD = latestPrices[enteredToken].USD;
+      let portfolioValueUSD = tokenTotal * tokenPriceUSD;
+      return portfolioValueUSD;
+    }
   } catch (error) {
     throw new Error(error);
   }
 };
 
 const getPortfolioValuesOnDate = async (enteredDate) => {
+  const csvStream = getCSVStream();
+  const portfolioData = {};
+  let csvTokens = [];
+  let portfolioValueUSD = 0;
   try {
     let unixTimeStamp = getUnixTimeStamp(enteredDate);
 
-    const transactionsUptoDate = getTransactionsUptoDate(
-      transactions,
-      unixTimeStamp
-    );
-    const tokens = [
-      ...new Set(transactionsUptoDate.map((transaction) => transaction.token)),
-    ];
+    for await (const transaction of csvStream) {
+      const { timestamp, transaction_type, token, amount } = transaction;
+      const tokenAmount = parseFloat(amount);
 
-    if (tokens.length > 0) {
-      let portfolioValue = 0;
+      if (compareDates(timestamp, unixTimeStamp)) {
+        if (!portfolioData[token]) {
+          portfolioData[token] = {
+            amount: 0,
+          };
+          csvTokens.push(token);
+        }
 
+        if (transaction_type === 'DEPOSIT') {
+          portfolioData[token].amount += tokenAmount;
+        } else if (transaction_type === 'WITHDRAWAL') {
+          portfolioData[token].amount -= tokenAmount;
+        }
+      }
+    }
+
+    if (csvTokens.length > 0) {
       const portfolio = await Promise.all(
-        tokens.map(async (token) => {
-          let tokenPrice = await getCryptoPriceInUSDOnDate(
+        csvTokens.map(async (token) => {
+          let tokenPriceOnDate = await getCryptoPriceInUSDOnDate(
             token,
             unixTimeStamp
           );
-          let tokenPriceOnDate = tokenPrice[token].USD;
-          let tokenBalanceUptoDate = getTokenBalanceOnDate(
-            transactions,
-            token,
-            unixTimeStamp
-          );
-          let tokenValue = tokenBalanceUptoDate * tokenPriceOnDate;
-          portfolioValue += tokenValue;
+          let tokenPriceOnDateUSD = tokenPriceOnDate[token].USD;
+          let tokenPortfolioValueUSD =
+            portfolioData[token].amount * tokenPriceOnDateUSD;
+          portfolioValueUSD += tokenPortfolioValueUSD;
           return {
             token,
-            value: tokenValue,
-            price: tokenPrice,
+            value: tokenPortfolioValueUSD,
+            price: tokenPriceOnDateUSD,
           };
         })
       );
 
       return {
         portfolio,
-        portfolioValue,
+        portfolioValueUSD,
       };
     } else {
       throw new Error('No records for given token');
@@ -107,22 +144,42 @@ const getPortfolioValuesOnDate = async (enteredDate) => {
   }
 };
 
-const getPortfolioValueOfTokenOnDate = async (enteredDate, token) => {
+const getPortfolioValueOfTokenOnDate = async (enteredDate, enteredToken) => {
+  const csvStream = getCSVStream();
+  let tokenTotal = 0;
   try {
-    let date = new Date(enteredDate);
-    const unixTimeStamp = getUnixTimeStamp(date);
-    let tokenPrice = await getCryptoPriceInUSDOnDate(token, unixTimeStamp);
-    let tokenPriceOnDate = tokenPrice[token].USD;
-    let tokenBalanceUptoDate = getTokenBalanceOnDate(transactions, token, date);
-    let tokenValueOnDate = tokenBalanceUptoDate * tokenPriceOnDate;
-    return tokenValueOnDate;
+    let unixTimeStamp = getUnixTimeStamp(enteredDate);
+
+    for await (const transaction of csvStream) {
+      const { timestamp, transaction_type, token, amount } = transaction;
+      const tokenAmount = parseFloat(amount);
+
+      if (compareDates(timestamp, unixTimeStamp) && enteredToken === token) {
+        if (transaction_type === 'DEPOSIT') {
+          tokenTotal += tokenAmount;
+        } else if (transaction_type === 'WITHDRAWAL') {
+          tokenTotal -= tokenAmount;
+        }
+      }
+    }
+
+    if (tokenTotal === 0) {
+      throw new Error('Token balance as of given date is 0');
+    } else {
+      let tokenPriceOnDate = await getCryptoPriceInUSDOnDate(
+        enteredToken,
+        unixTimeStamp
+      );
+      let tokenPriceOnDateUSD = tokenPriceOnDate[enteredToken].USD;
+      let tokenPortfolioValueOnDate = tokenTotal * tokenPriceOnDateUSD;
+      return tokenPortfolioValueOnDate;
+    }
   } catch (error) {
     throw new Error(error);
   }
 };
 
 module.exports = {
-  init,
   getLatestPortfolioValues,
   getLatestPortfolioValueOfToken,
   getPortfolioValuesOnDate,
