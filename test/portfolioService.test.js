@@ -1,9 +1,9 @@
 const {
-  getPortfolioValue,
   getLatestPortfolioValues,
-  getLatestPortfolioValue,
-  getPortfolioValueOnDate,
-} = require('../bin/portfolioService');
+  getLatestPortfolioValueOfToken,
+  getPortfolioValuesOnDate,
+  getPortfolioValueOfTokenOnDate,
+} = require('../services/portfolioService');
 
 describe('Portfolio Service', () => {
   describe('getPortfolioValue', () => {

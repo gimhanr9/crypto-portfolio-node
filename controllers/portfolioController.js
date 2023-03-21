@@ -1,19 +1,47 @@
 const portfolioService = require('../services/portfolioService');
 
-exports.getLatestPortfolioValues = () => {
-  const latestPortfolioValues = portfolioService.getLatestPortfolioValues();
+exports.getLatestPortfolioValues = async () => {
+  try {
+    const latestPortfolioValues =
+      await portfolioService.getLatestPortfolioValues();
+    return latestPortfolioValues;
+  } catch (error) {
+    throw new Error('Unable to get latest portfolio values: ' + error.message);
+  }
 };
 
-exports.getLatestPortfolioValueByToken = (token) => {
-  const latestPortfolioValue =
-    portfolioService.getLatestPortfolioValueOfToken(token);
+exports.getLatestPortfolioValueByToken = async (token) => {
+  try {
+    const latestPortfolioValueOfToken =
+      await portfolioService.getLatestPortfolioValueOfToken(token);
+    return latestPortfolioValueOfToken;
+  } catch (error) {
+    throw new Error(
+      'Unable to get latest portfolio value of token: ' + error.message
+    );
+  }
 };
 
-exports.getPortfolioValuesOnDate = (date) => {
-  const portfolioValuesOnDate = portfolioService.getPortfolioValuesOnDate(date);
+exports.getPortfolioValuesOnDate = async (date) => {
+  try {
+    const portfolioValuesOnDate =
+      await portfolioService.getPortfolioValuesOnDate(date);
+    return portfolioValuesOnDate;
+  } catch (error) {
+    throw new Error(
+      'Unable to get portfolio values on given date: ' + error.message
+    );
+  }
 };
 
-exports.getPortfolioValuesofTokenOnDate = (date, token) => {
-  const portfolioValueOfTokenOnDate =
-    portfolioService.getPortfolioValueOfTokenOnDate(date, token);
+exports.getPortfolioValuesOfTokenOnDate = async (date, token) => {
+  try {
+    const portfolioValueOfTokenOnDate =
+      await portfolioService.getPortfolioValueOfTokenOnDate(date, token);
+    return portfolioValueOfTokenOnDate;
+  } catch (error) {
+    throw new Error(
+      'Unable to get portfolio value of token on given date: ' + error.message
+    );
+  }
 };
