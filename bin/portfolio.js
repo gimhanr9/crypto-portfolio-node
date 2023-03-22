@@ -55,12 +55,15 @@ const main = async () => {
       } catch (error) {
         spinner.fail();
         console.error(chalk.red('Error:', error.message));
+        process.exit(1);
       }
     });
 
   program
     .command('token <token>')
-    .description('Get the latest portfolio value for a given token in USD')
+    .description(
+      'Get the latest portfolio value for a given token in USD. e.g- token BTC'
+    )
     .action(async (token) => {
       try {
         spinner.start(
@@ -80,12 +83,15 @@ const main = async () => {
       } catch (error) {
         spinner.fail();
         console.error(chalk.red('Error:', error.message));
+        process.exit(1);
       }
     });
 
   program
     .command('date <date>')
-    .description('Get the portfolio value per token in USD on a given date')
+    .description(
+      'Get the portfolio value per token in USD on a given date. e.g- date 21/3/2023'
+    )
     .action(async (date) => {
       try {
         spinner.start(
@@ -118,13 +124,14 @@ const main = async () => {
       } catch (error) {
         spinner.fail();
         console.error(chalk.red('Error:', error.message));
+        process.exit(1);
       }
     });
 
   program
     .command('value <date> <token>')
     .description(
-      'Get the portfolio value of a given token in USD on the given date'
+      'Get the portfolio value of a given token in USD on the given date. e.g- value 21/3/2016 BTC'
     )
     .action(async (date, token) => {
       try {
@@ -147,6 +154,7 @@ const main = async () => {
       } catch (error) {
         spinner.fail();
         console.error(chalk.red('Error:', error.message));
+        process.exit(1);
       }
     });
 
