@@ -65,17 +65,18 @@ function compareDates(timestampCSV, timestampUser) {
 }
 
 const getUnixTimeStamp = (date) => {
-  const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
-  const match = date.match(dateRegex);
-  if (!match) {
-    throw new Error('Invalid date format');
+  if (!(date instanceof Date)) {
+    const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+    const match = date.match(dateRegex);
+    if (!match) {
+      throw new Error('Invalid date format');
+    }
+    date = new Date(match[3], match[2] - 1, match[1]);
   }
-  const dateObject = new Date(date);
-  if (dateObject.toString() === 'Invalid Date') {
+  if (isNaN(date.getTime())) {
     throw new Error('Invalid date value');
   }
-
-  return Math.floor(dateObject.getTime() / 1000);
+  return Math.floor(date.getTime() / 1000);
 };
 
 module.exports = {
